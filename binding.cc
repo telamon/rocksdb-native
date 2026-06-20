@@ -5,6 +5,9 @@
 #include <js.h>
 #include <jstl.h>
 #include <rocksdb.h>
+#include <rocksdb/db.h>
+#include <rocksdb/perf_context.h>
+#include <rocksdb/perf_level.h>
 #include <stdlib.h>
 #include <string.h>
 #include <utf.h>
@@ -369,6 +372,9 @@ rocksdb_native_init(
   bool best_efforts_recovery
 ) {
   int err;
+
+  rocksdb::SetPerfLevel(rocksdb::PerfLevel::kEnableCount);
+  rocksdb::get_perf_context()->EnablePerLevelPerfContext();
 
   js_arraybuffer_t handle;
 
@@ -1769,6 +1775,63 @@ rocksdb_native_approximate_size(
   return handle;
 }
 
+static std::optional<std::string>
+rocksdb_native_property_value(
+  js_env_t *env,
+  js_arraybuffer_span_of_t<rocksdb_native_t, 1> db,
+  char *name
+) {
+  auto handle = reinterpret_cast<rocksdb::DB *>(db->handle.handle);
+
+  std::string value;
+  if (handle->GetProperty(name, &value)) return value;
+
+  return std::nullopt;
+}
+
+static js_object_t
+rocksdb_native_perf_context(
+  js_env_t *env,
+  js_arraybuffer_span_of_t<rocksdb_native_t, 1> db
+) {
+  int err;
+
+  (void) db;
+
+  auto *perf = rocksdb::get_perf_context();
+  uint64_t misses = 0;
+
+  if (perf->level_to_perf_context) {
+    for (const auto &entry : *perf->level_to_perf_context) {
+      misses += entry.second.block_cache_miss_count;
+    }
+  }
+
+  js_object_t result;
+  err = js_create_object(env, result);
+  assert(err == 0);
+
+  js_value_t *hits;
+  err = js_create_bigint_uint64(env, perf->block_cache_hit_count, &hits);
+  assert(err == 0);
+  err = js_set_named_property(env, static_cast<js_value_t *>(result), "blockCacheHits", hits);
+  assert(err == 0);
+
+  js_value_t *misses_value;
+  err = js_create_bigint_uint64(env, misses, &misses_value);
+  assert(err == 0);
+  err = js_set_named_property(env, static_cast<js_value_t *>(result), "blockCacheMisses", misses_value);
+  assert(err == 0);
+
+  js_value_t *reads;
+  err = js_create_bigint_uint64(env, perf->block_read_count, &reads);
+  assert(err == 0);
+  err = js_set_named_property(env, static_cast<js_value_t *>(result), "blockReads", reads);
+  assert(err == 0);
+
+  return result;
+}
+
 static js_arraybuffer_t
 rocksdb_native_snapshot_create(js_env_t *env, js_arraybuffer_span_of_t<rocksdb_native_t, 1> db) {
   int err;
@@ -1843,6 +1906,8 @@ rocksdb_native_exports(js_env_t *env, js_value_t *exports) {
   V("flush", rocksdb_native_flush)
   V("compactRange", rocksdb_native_compact_range)
   V("approximateSize", rocksdb_native_approximate_size)
+  V("propertyValue", rocksdb_native_property_value)
+  V("perfContext", rocksdb_native_perf_context)
 
   V("snapshotCreate", rocksdb_native_snapshot_create)
   V("snapshotDestroy", rocksdb_native_snapshot_destroy)

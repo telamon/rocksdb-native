@@ -1288,6 +1288,30 @@ test('stats', async (t) => {
   await db.close()
 })
 
+test('propertyValue', async (t) => {
+  const db = new RocksDB(await t.tmp())
+  await db.ready()
+
+  const stats = db.propertyValue('rocksdb.options-statistics')
+  t.is(typeof stats, 'string')
+  t.ok(stats.includes('rocksdb.block.cache.hit COUNT'))
+  t.ok(stats.includes('rocksdb.block.cache.miss COUNT'))
+
+  await db.close()
+})
+
+test('perfContext', async (t) => {
+  const db = new RocksDB(await t.tmp())
+  await db.ready()
+
+  const perf = db.perfContext()
+  t.is(typeof perf.blockCacheHits, 'bigint')
+  t.is(typeof perf.blockCacheMisses, 'bigint')
+  t.is(typeof perf.blockReads, 'bigint')
+
+  await db.close()
+})
+
 test('diagnostics reflects state', async (t) => {
   const db = new RocksDB(await t.tmp())
   t.teardown(() => db.close())

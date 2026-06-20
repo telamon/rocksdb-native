@@ -1,0 +1,19 @@
+--- a/src/rocksdb.cc
++++ b/src/rocksdb.cc
+@@ -8,6 +8,7 @@
+ #include <rocksdb/filter_policy.h>
+ #include <rocksdb/options.h>
+ #include <rocksdb/table.h>
++#include <rocksdb/statistics.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <uv.h>
+@@ -420,6 +421,8 @@ rocksdb__on_open(uv_work_t *handle) {
+   options.best_efforts_recovery = rocksdb__option<&rocksdb_options_t::best_efforts_recovery, bool>(
+     &req->options, 5
+   );
++
++  options.statistics = CreateDBStatistics();
+ 
+   auto read_only = rocksdb__option<&rocksdb_options_t::read_only, bool>(
+     &req->options, 0

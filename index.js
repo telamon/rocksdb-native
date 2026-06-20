@@ -2,6 +2,7 @@ const ColumnFamily = require('./lib/column-family')
 const Iterator = require('./lib/iterator')
 const Snapshot = require('./lib/snapshot')
 const State = require('./lib/state')
+const binding = require('./binding')
 const { BloomFilterPolicy, RibbonFilterPolicy } = require('./lib/filter-policy')
 const constants = require('./lib/constants')
 
@@ -197,6 +198,16 @@ class RocksDB {
 
   async approximateSize(start, end, opts = {}) {
     return this._state.approximateSize(this, start, end, opts)
+  }
+
+  propertyValue(name) {
+    maybeClosed(this)
+    return binding.propertyValue(this._state._handle, name)
+  }
+
+  perfContext() {
+    maybeClosed(this)
+    return binding.perfContext(this._state._handle)
   }
 
   _ref() {
