@@ -200,14 +200,9 @@ class RocksDB {
     return this._state.approximateSize(this, start, end, opts)
   }
 
-  propertyValue(name) {
+  propertyGet(name) {
     maybeClosed(this)
-    return binding.propertyValue(this._state._handle, name)
-  }
-
-  perfContext() {
-    maybeClosed(this)
-    return binding.perfContext(this._state._handle)
+    return binding.propertyGet(this._state._handle, name)
   }
 
   _ref() {
